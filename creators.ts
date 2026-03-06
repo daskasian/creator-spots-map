@@ -1,5 +1,3 @@
-import creatorsData from "@/data/creators.json";
-
 export type CreatorCategory = "foods" | "things-to-do" | "secret-spots";
 
 export interface Creator {
@@ -9,4 +7,7 @@ export interface Creator {
   category: CreatorCategory;
 }
 
-export const CREATORS: Creator[] = creatorsData as Creator[];
+// Placeholder list for now – the full data setup
+// (including JSON files and API integration) is not needed
+// when using this repo as a simple website.
+export const CREATORS: Creator[] = [];
