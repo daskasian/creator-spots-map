@@ -1,27 +1,38 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import type { Spot } from "../api/spots/route";
 import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 import L from "leaflet";
 
-const defaultCenter: [number, number] = [51.509865, -0.118092]; // London as a sensible default
-
-const spotIcon = L.divIcon({
-  className: "spot-marker",
-  html: '<span style="background:#fbbf24;border-radius:9999px;width:14px;height:14px;display:block;border:2px solid #92400e;"></span>',
-  iconSize: [18, 18],
-  iconAnchor: [9, 9],
-});
+const defaultCenter: [number, number] = [51.509865, -0.118092]; // London default
 
 interface MapProps {
   spots: Spot[];
 }
 
 export default function Map({ spots }: MapProps) {
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    setReady(true);
+  }, []);
+
+  const spotIcon = useMemo(
+    () =>
+      L.divIcon({
+        className: "spot-marker",
+        html: '<span style="background:#fbbf24;border-radius:9999px;width:14px;height:14px;display:block;border:2px solid #92400e;"></span>',
+        iconSize: [18, 18],
+        iconAnchor: [9, 9],
+      }),
+    [],
+  );
+
   const center: [number, number] =
-    spots.length > 0
-      ? [spots[0].lat, spots[0].lng]
-      : defaultCenter;
+    spots.length > 0 ? [spots[0].lat, spots[0].lng] : defaultCenter;
+
+  if (!ready) return null;
 
   return (
     <MapContainer
