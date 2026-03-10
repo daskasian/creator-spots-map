@@ -165,82 +165,89 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const { searchParams } = new URL(request.url);
-  const creatorId = searchParams.get("creatorId");
-  const channelId = searchParams.get("channelId");
-  const creatorNameFromQuery = searchParams.get("creatorName");
-  const forceRefresh = searchParams.get("refresh") === "true";
+  try {
+    const { searchParams } = new URL(request.url);
+    const creatorId = searchParams.get("creatorId");
+    const channelId = searchParams.get("channelId");
+    const creatorNameFromQuery = searchParams.get("creatorName");
+    const forceRefresh = searchParams.get("refresh") === "true";
 
-  const cacheKey =
-    channelId ?? creatorId ?? "all";
+    const cacheKey = channelId ?? creatorId ?? "all";
 
-  if (!forceRefresh) {
-    const cached = await readCache(cacheKey);
-    if (isCacheValid(cached)) {
-      return NextResponse.json({
-        spots: cached.spots,
-        fromCache: true,
-        cachedAt: new Date(cached.writtenAt).toISOString(),
-      });
+    if (!forceRefresh) {
+      const cached = await readCache(cacheKey);
+      if (isCacheValid(cached)) {
+        return NextResponse.json({
+          spots: cached.spots,
+          fromCache: true,
+          cachedAt: new Date(cached.writtenAt).toISOString(),
+        });
+      }
+    } else {
+      await invalidateCache(cacheKey);
     }
-  } else {
-    await invalidateCache(cacheKey);
-  }
 
-  let targets:
-    | { id: string; name: string; channelId: string }[]
-    | null = null;
+    let targets:
+      | { id: string; name: string; channelId: string }[]
+      | null = null;
 
-  if (channelId) {
-    // Dynamic creator passed explicitly from client
-    targets = [
-      {
-        id: channelId,
-        name: creatorNameFromQuery || "Unknown creator",
-        channelId,
-      },
-    ];
-  } else {
-    // Fallback to static creators list
-    targets = creatorId
-      ? CREATORS.filter((c) => c.id === creatorId)
-      : CREATORS;
+    if (channelId) {
+      // Dynamic creator passed explicitly from client
+      targets = [
+        {
+          id: channelId,
+          name: creatorNameFromQuery || "Unknown creator",
+          channelId,
+        },
+      ];
+    } else {
+      // Fallback to static creators list
+      targets = creatorId
+        ? CREATORS.filter((c) => c.id === creatorId)
+        : CREATORS;
 
-    if (targets.length === 0) {
-      return NextResponse.json(
-        { error: `Creator "${creatorId}" not found` },
-        { status: 404 },
-      );
-    }
-  }
-
-  const allSpots: Spot[] = [];
-
-  for (const creator of targets) {
-    // When fetching \"all\" static creators, reuse individual caches
-    if (!channelId && !creatorId) {
-      const creatorCache = await readCache(creator.id);
-      if (isCacheValid(creatorCache)) {
-        allSpots.push(...creatorCache.spots);
-        continue;
+      if (targets.length === 0) {
+        return NextResponse.json(
+          { error: `Creator "${creatorId}" not found` },
+          { status: 404 },
+        );
       }
     }
 
-    try {
-      const spots = await fetchSpotsForCreator(
-        creator.id,
-        creator.name,
-        creator.channelId,
-      );
-      allSpots.push(...spots);
-      await writeCache(creator.id, spots);
-    } catch (err) {
-      console.error(`Failed to load spots for ${creator.name}:`, err);
+    const allSpots: Spot[] = [];
+
+    for (const creator of targets) {
+      // When fetching \"all\" static creators, reuse individual caches
+      if (!channelId && !creatorId) {
+        const creatorCache = await readCache(creator.id);
+        if (isCacheValid(creatorCache)) {
+          allSpots.push(...creatorCache.spots);
+          continue;
+        }
+      }
+
+      try {
+        const spots = await fetchSpotsForCreator(
+          creator.id,
+          creator.name,
+          creator.channelId,
+        );
+        allSpots.push(...spots);
+        await writeCache(creator.id, spots);
+      } catch (err) {
+        console.error(`Failed to load spots for ${creator.name}:`, err);
+      }
     }
+
+    await writeCache(cacheKey, allSpots);
+
+    return NextResponse.json({ spots: allSpots, fromCache: false });
+  } catch (err: any) {
+    console.error("Unhandled error in /api/spots:", err);
+    return NextResponse.json(
+      { error: err?.message || String(err) || "Unknown error" },
+      { status: 500 },
+    );
   }
-
-  await writeCache(cacheKey, allSpots);
-
-  return NextResponse.json({ spots: allSpots, fromCache: false });
 }
 
