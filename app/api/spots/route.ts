@@ -167,9 +167,12 @@ export async function GET(request: NextRequest) {
 
   const { searchParams } = new URL(request.url);
   const creatorId = searchParams.get("creatorId");
+  const channelId = searchParams.get("channelId");
+  const creatorNameFromQuery = searchParams.get("creatorName");
   const forceRefresh = searchParams.get("refresh") === "true";
 
-  const cacheKey = creatorId ?? "all";
+  const cacheKey =
+    channelId ?? creatorId ?? "all";
 
   if (!forceRefresh) {
     const cached = await readCache(cacheKey);
@@ -184,21 +187,38 @@ export async function GET(request: NextRequest) {
     await invalidateCache(cacheKey);
   }
 
-  const targets = creatorId
-    ? CREATORS.filter((c) => c.id === creatorId)
-    : CREATORS;
+  let targets:
+    | { id: string; name: string; channelId: string }[]
+    | null = null;
 
-  if (targets.length === 0) {
-    return NextResponse.json(
-      { error: `Creator "${creatorId}" not found` },
-      { status: 404 },
-    );
+  if (channelId) {
+    // Dynamic creator passed explicitly from client
+    targets = [
+      {
+        id: channelId,
+        name: creatorNameFromQuery || "Unknown creator",
+        channelId,
+      },
+    ];
+  } else {
+    // Fallback to static creators list
+    targets = creatorId
+      ? CREATORS.filter((c) => c.id === creatorId)
+      : CREATORS;
+
+    if (targets.length === 0) {
+      return NextResponse.json(
+        { error: `Creator "${creatorId}" not found` },
+        { status: 404 },
+      );
+    }
   }
 
   const allSpots: Spot[] = [];
 
   for (const creator of targets) {
-    if (!creatorId) {
+    // When fetching \"all\" static creators, reuse individual caches
+    if (!channelId && !creatorId) {
       const creatorCache = await readCache(creator.id);
       if (isCacheValid(creatorCache)) {
         allSpots.push(...creatorCache.spots);
