@@ -14,8 +14,17 @@ import type { Spot } from "./app/api/spots/route";
 const CACHE_TTL_MS =
   parseInt(process.env.SPOT_CACHE_TTL_MS ?? "", 10) || 24 * 60 * 60 * 1000;
 
-/** Directory (relative to project root) where cache files live */
-const CACHE_DIR = path.join(process.cwd(), ".cache", "spots");
+/**
+ * Directory where cache files live.
+ *
+ * - Locally: .cache/spots under the project root.
+ * - On serverless platforms (like Vercel): use /tmp, which is writable.
+ */
+const CACHE_ROOT =
+  process.env.SPOT_CACHE_DIR ??
+  (process.env.VERCEL ? "/tmp/creator-spots-cache" : process.cwd());
+
+const CACHE_DIR = path.join(CACHE_ROOT, "spots");
 
 export interface CacheEntry {
   creatorId: string;
