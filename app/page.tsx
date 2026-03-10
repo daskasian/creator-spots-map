@@ -77,7 +77,7 @@ export default function Home() {
       </div>
 
       {/* Top bar with title and creator search */}
-      <div className="fixed top-4 left-1/2 z-40 w-full max-w-3xl -translate-x-1/2 px-4">
+      <div className="fixed top-4 left-1/2 z-[1000] w-full max-w-3xl -translate-x-1/2 px-4">
         <div className="flex items-center justify-between gap-3 rounded-xl bg-white/90 px-4 py-2 shadow-md backdrop-blur">
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-stone-800">
@@ -120,7 +120,7 @@ export default function Home() {
       </div>
 
       {/* Category filters in the top-right corner */}
-      <div className="fixed right-4 top-4 z-40">
+      <div className="fixed right-4 top-4 z-[1000]">
         <div className="flex flex-col items-end gap-2">
           <div className="flex flex-wrap justify-end gap-1 rounded-xl bg-white/90 px-3 py-2 shadow-md backdrop-blur">
             <button
@@ -161,7 +161,7 @@ export default function Home() {
 
       {/* Status overlays */}
       {error && (
-        <div className="fixed left-1/2 top-24 z-50 -translate-x-1/2 px-4">
+        <div className="fixed left-1/2 top-24 z-[1000] -translate-x-1/2 px-4">
           <div className="rounded-md bg-red-50 px-4 py-2 text-sm text-red-700 shadow-md">
             {error}
           </div>
@@ -169,7 +169,7 @@ export default function Home() {
       )}
 
       {loading && (
-        <div className="fixed left-1/2 top-32 z-50 -translate-x-1/2 px-4">
+        <div className="fixed left-1/2 top-32 z-[1000] -translate-x-1/2 px-4">
           <div className="rounded-md bg-white px-4 py-2 text-sm text-stone-600 shadow-md">
             Loading spots...
           </div>
@@ -177,7 +177,7 @@ export default function Home() {
       )}
 
       {!loading && spots.length === 0 && !error && (
-        <div className="fixed bottom-6 left-1/2 z-40 -translate-x-1/2 px-4">
+        <div className="fixed bottom-6 left-1/2 z-[1000] -translate-x-1/2 px-4">
           <div className="rounded-full bg-white/90 px-4 py-2 text-xs text-stone-600 shadow-md backdrop-blur">
             {hasLoaded
               ? "No spots found in descriptions for these videos."
