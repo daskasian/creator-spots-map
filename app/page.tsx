@@ -241,6 +241,18 @@ export default function Home() {
     markRecent(asCreator.id);
   };
 
+  const isFavourite = (id: string) =>
+    favourites.some((creator) => creator.id === id);
+
+  const toggleFavourite = (creator: FavouriteCreator) => {
+    setFavourites((prev) => {
+      if (prev.some((c) => c.id === creator.id)) {
+        return prev.filter((c) => c.id !== creator.id);
+      }
+      return [...prev, creator];
+    });
+  };
+
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-stone-50">
       {/* Map fills the screen */}
@@ -302,23 +314,35 @@ export default function Home() {
               ) : (
                 allCreators.map((creator) => (
                   <li key={`saved-${creator.id}`}>
-                    <button
-                      type="button"
-                      onClick={() => handleSelectCreator(creator)}
-                      className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-xs text-stone-700 hover:bg-stone-50"
-                    >
-                      <span className="flex items-center gap-2">
-                        <span
-                          className={`inline-block h-2 w-2 rounded-full ${colorForId(
-                            creator.id,
-                          )}`}
-                        />
-                        <span className="truncate">{creator.name}</span>
-                      </span>
-                      <span className="text-[10px] uppercase tracking-wide text-stone-400">
-                        {creator.category.replace(/-/g, " ")}
-                      </span>
-                    </button>
+                    <div className="flex items-center justify-between rounded-md px-2 py-1.5 text-xs text-stone-700 hover:bg-stone-50">
+                      <button
+                        type="button"
+                        onClick={() => handleSelectCreator(creator)}
+                        className="flex flex-1 items-center justify-between text-left"
+                      >
+                        <span className="flex items-center gap-2">
+                          <span
+                            className={`inline-block h-2 w-2 rounded-full ${colorForId(
+                              creator.id,
+                            )}`}
+                          />
+                          <span className="truncate">{creator.name}</span>
+                        </span>
+                        <span className="text-[10px] uppercase tracking-wide text-stone-400">
+                          {creator.category.replace(/-/g, " ")}
+                        </span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => toggleFavourite(creator)}
+                        className="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full border border-stone-200 bg-white text-[11px] text-stone-500 hover:bg-stone-100"
+                        aria-label={
+                          isFavourite(creator.id) ? "Unsave creator" : "Save creator"
+                        }
+                      >
+                        {isFavourite(creator.id) ? "−" : "+"}
+                      </button>
+                    </div>
                   </li>
                 ))
               )}
@@ -386,18 +410,41 @@ export default function Home() {
                       <ul className="pb-2">
                         {searchResults.map((result) => (
                           <li key={result.channelId}>
-                            <button
-                              type="button"
-                              onClick={() => handleSelectChannelResult(result)}
-                              className="flex w-full flex-col px-3 py-1.5 text-left text-sm text-stone-700 hover:bg-stone-50"
-                            >
-                              <span className="font-medium">{result.title}</span>
-                              {result.description && (
-                                <span className="mt-0.5 line-clamp-2 text-[11px] text-stone-500">
-                                  {result.description}
+                            <div className="flex items-start justify-between px-3 py-1.5 text-sm text-stone-700 hover:bg-stone-50">
+                              <button
+                                type="button"
+                                onClick={() => handleSelectChannelResult(result)}
+                                className="flex-1 text-left"
+                              >
+                                <span className="font-medium">
+                                  {result.title}
                                 </span>
-                              )}
-                            </button>
+                                {result.description && (
+                                  <span className="mt-0.5 block line-clamp-2 text-[11px] text-stone-500">
+                                    {result.description}
+                                  </span>
+                                )}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  toggleFavourite({
+                                    id: result.channelId,
+                                    name: result.title,
+                                    channelId: result.channelId,
+                                    category: "things-to-do",
+                                  })
+                                }
+                                className="ml-2 mt-0.5 inline-flex h-6 w-6 items-center justify-center rounded-full border border-stone-200 bg-white text-xs text-stone-500 hover:bg-stone-100"
+                                aria-label={
+                                  isFavourite(result.channelId)
+                                    ? "Unsave creator"
+                                    : "Save creator"
+                                }
+                              >
+                                {isFavourite(result.channelId) ? "−" : "+"}
+                              </button>
+                            </div>
                           </li>
                         ))}
                       </ul>
