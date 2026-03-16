@@ -190,6 +190,22 @@ export function extractWithConfidence(description: string): PlaceCandidate[] {
       continue;
     }
 
+    // Multiple spots in a single sentence with postcodes (e.g. UK style)
+    const postcodeRe = /\b[A-Z]{1,2}\d{1,2}\s?\d[A-Z]{2}\b/;
+    if (postcodeRe.test(cleaned)) {
+      const segments = cleaned.split(/(?<=\.)\s+| {2,}/);
+      for (const seg of segments) {
+        const part = seg.trim();
+        if (!part || part.length < 4 || part.length > 120) continue;
+        if (!postcodeRe.test(part)) continue;
+        if (isJunk(part)) continue;
+        const conf =
+          hasPlaceSuffix(part) || hasGeoTerm(part) ? "high" : "medium";
+        addCandidate(part, conf);
+      }
+      continue;
+    }
+
     // ── MEDIUM/LOW confidence: free-form sentences with clear place cues ──
     // e.g. "A Swift One at… The Goose Tavern, Dublin 9."
     if (cleaned.includes(",") && hasGeoTerm(cleaned) && !isJunk(cleaned)) {
