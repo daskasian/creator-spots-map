@@ -35,18 +35,52 @@ async function getChannelUploadsPlaylistId(channelId: string): Promise<string> {
 
 async function getPlaylistVideoIds(
   playlistId: string,
-  maxResults = 20,
+  maxResults = 100,
 ): Promise<{ videoId: string }[]> {
-  const res = await fetch(
-    `https://www.googleapis.com/youtube/v3/playlistItems?part=contentDetails&playlistId=${playlistId}&maxResults=${maxResults}&key=${YOUTUBE_API_KEY}`,
-  );
-  if (!res.ok) {
-    throw new Error(`YouTube playlistItems API error: ${res.status}`);
+  // Page through the uploads playlist until we reach maxResults or run out.
+  const perPage = 50;
+  let collected: { videoId: string }[] = [];
+  let pageToken: string | undefined;
+
+  // Safety cap: never fetch more than 500 videos in a single run,
+  // even if maxResults is set higher.
+  const hardCap = Math.min(maxResults, 500);
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const url = new URL(
+      "https://www.googleapis.com/youtube/v3/playlistItems",
+    );
+    url.searchParams.set("part", "contentDetails");
+    url.searchParams.set("playlistId", playlistId);
+    url.searchParams.set("maxResults", String(perPage));
+    if (pageToken) url.searchParams.set("pageToken", pageToken);
+    url.searchParams.set("key", YOUTUBE_API_KEY!);
+
+    const res = await fetch(url.toString());
+    if (!res.ok) {
+      throw new Error(`YouTube playlistItems API error: ${res.status}`);
+    }
+    const data = await res.json();
+    const items = (data.items ?? []) as Array<{ contentDetails?: { videoId: string } }>;
+
+    collected = collected.concat(
+      items
+        .map((item) => item.contentDetails?.videoId)
+        .filter((id): id is string => !!id)
+        .map((videoId) => ({ videoId })),
+    );
+
+    if (collected.length >= hardCap) {
+      collected = collected.slice(0, hardCap);
+      break;
+    }
+
+    pageToken = data.nextPageToken as string | undefined;
+    if (!pageToken) break;
   }
-  const data = await res.json();
-  return (data.items ?? []).map((item: Record<string, unknown>) => ({
-    videoId: (item.contentDetails as Record<string, string>).videoId,
-  }));
+
+  return collected;
 }
 
 async function getVideoSnippets(
