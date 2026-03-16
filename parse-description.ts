@@ -190,6 +190,14 @@ export function extractWithConfidence(description: string): PlaceCandidate[] {
       continue;
     }
 
+    // ── MEDIUM/LOW confidence: free-form sentences with clear place cues ──
+    // e.g. "A Swift One at… The Goose Tavern, Dublin 9."
+    if (cleaned.includes(",") && hasGeoTerm(cleaned) && !isJunk(cleaned)) {
+      const conf = hasPlaceSuffix(cleaned) ? "high" : "medium";
+      addCandidate(cleaned, conf);
+      continue;
+    }
+
     // ── LOW confidence: lines that just contain geo terms ──
     if (hasGeoTerm(cleaned) || hasPlaceSuffix(cleaned)) {
       if (!isJunk(cleaned) && cleaned.length < 80) {
