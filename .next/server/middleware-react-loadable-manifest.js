@@ -1,1 +1,1 @@
-self.__REACT_LOADABLE_MANIFEST='{"app/page.tsx -> ./components/Map":{"id":3258,"files":["static/chunks/d0deef33.bd75b11a952a2d3d.js","static/chunks/258.d3246615ce32baff.js"]}}';
+self.__REACT_LOADABLE_MANIFEST="{\"app/page.tsx -> ./components/Map\":{\"id\":\"app/page.tsx -> ./components/Map\",\"files\":[\"static/chunks/_app-pages-browser_app_components_Map_tsx.js\"]}}"
