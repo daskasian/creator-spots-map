@@ -15,6 +15,25 @@ const CATEGORIES: { id: CreatorCategory; label: string }[] = [
 
 type FavouriteCreator = Creator;
 
+const COLOR_CLASSES = [
+  "bg-rose-500",
+  "bg-orange-500",
+  "bg-amber-500",
+  "bg-emerald-500",
+  "bg-sky-500",
+  "bg-indigo-500",
+  "bg-fuchsia-500",
+] as const;
+
+function colorForId(id: string): (typeof COLOR_CLASSES)[number] {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = (hash * 31 + id.charCodeAt(i)) | 0;
+  }
+  const idx = Math.abs(hash) % COLOR_CLASSES.length;
+  return COLOR_CLASSES[idx];
+}
+
 interface ChannelSearchResult {
   channelId: string;
   title: string;
@@ -34,6 +53,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [hasLoaded, setHasLoaded] = useState(false);
   const [favourites, setFavourites] = useState<FavouriteCreator[]>([]);
+  const [recentCreatorIds, setRecentCreatorIds] = useState<string[]>([]);
   const [searchResults, setSearchResults] = useState<ChannelSearchResult[]>([]);
 
   const allCreators: FavouriteCreator[] = [
@@ -65,6 +85,21 @@ export default function Home() {
     }
   }, []);
 
+  // Load recents from localStorage
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem("creator-spots-recents-v1");
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as string[];
+      if (Array.isArray(parsed)) {
+        setRecentCreatorIds(parsed);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
   // Persist favourites to localStorage
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -77,6 +112,19 @@ export default function Home() {
       // ignore
     }
   }, [favourites]);
+
+  // Persist recents to localStorage
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(
+        "creator-spots-recents-v1",
+        JSON.stringify(recentCreatorIds),
+      );
+    } catch {
+      // ignore
+    }
+  }, [recentCreatorIds]);
 
   // Load spots for the currently selected creator
   useEffect(() => {
@@ -157,11 +205,126 @@ export default function Home() {
     };
   }, [search]);
 
+  const markRecent = (id: string) => {
+    setRecentCreatorIds((prev) => {
+      const existing = prev.filter((x) => x !== id);
+      return [id, ...existing].slice(0, 10);
+    });
+  };
+
+  const handleSelectCreator = (creator: FavouriteCreator) => {
+    setSelectedChannel(null);
+    setSelectedCreatorId(creator.id);
+    setSearch(creator.name);
+    markRecent(creator.id);
+  };
+
+  const handleSelectChannelResult = (result: ChannelSearchResult) => {
+    const asCreator: FavouriteCreator = {
+      id: result.channelId,
+      name: result.title,
+      channelId: result.channelId,
+      category: "things-to-do",
+    };
+    setSelectedCreatorId(null);
+    setSelectedChannel({
+      channelId: result.channelId,
+      name: result.title,
+    });
+    setSearch(result.title);
+    setFavourites((prev) => {
+      if (prev.some((p) => p.id === asCreator.id)) {
+        return prev;
+      }
+      return [...prev, asCreator];
+    });
+    markRecent(asCreator.id);
+  };
+
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-stone-50">
       {/* Map fills the screen */}
       <div className="absolute inset-0">
         <Map spots={spots} />
+      </div>
+
+      {/* Left sidebar: recent + saved creators */}
+      <div className="fixed left-4 top-24 z-[1000] w-64 max-w-[70vw]">
+        <div className="rounded-xl bg-white/90 px-3 py-3 shadow-md backdrop-blur">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-stone-500">
+            Your creators
+          </p>
+          {/* Recent */}
+          {recentCreatorIds.length > 0 && (
+            <div className="mb-3">
+              <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-stone-400">
+                Recent
+              </p>
+              <ul className="space-y-1">
+                {recentCreatorIds
+                  .map((id) => allCreators.find((c) => c.id === id))
+                  .filter((c): c is FavouriteCreator => !!c)
+                  .map((creator) => (
+                    <li key={`recent-${creator.id}`}>
+                      <button
+                        type="button"
+                        onClick={() => handleSelectCreator(creator)}
+                        className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-xs text-stone-700 hover:bg-stone-50"
+                      >
+                        <span className="flex items-center gap-2">
+                          <span
+                            className={`inline-block h-2 w-2 rounded-full ${colorForId(
+                              creator.id,
+                            )}`}
+                          />
+                          <span className="truncate">{creator.name}</span>
+                        </span>
+                        <span className="text-[10px] uppercase tracking-wide text-stone-400">
+                          {creator.category.replace(/-/g, " ")}
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Saved favourites */}
+          <div>
+            <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-stone-400">
+              Saved
+            </p>
+            <ul className="max-h-40 space-y-1 overflow-y-auto pr-1">
+              {allCreators.length === 0 ? (
+                <li className="text-[11px] text-stone-500">
+                  Search any channel to add it here.
+                </li>
+              ) : (
+                allCreators.map((creator) => (
+                  <li key={`saved-${creator.id}`}>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectCreator(creator)}
+                      className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-xs text-stone-700 hover:bg-stone-50"
+                    >
+                      <span className="flex items-center gap-2">
+                        <span
+                          className={`inline-block h-2 w-2 rounded-full ${colorForId(
+                            creator.id,
+                          )}`}
+                        />
+                        <span className="truncate">{creator.name}</span>
+                      </span>
+                      <span className="text-[10px] uppercase tracking-wide text-stone-400">
+                        {creator.category.replace(/-/g, " ")}
+                      </span>
+                    </button>
+                  </li>
+                ))
+              )}
+            </ul>
+          </div>
+        </div>
       </div>
 
       {/* Top bar with title and creator search */}
@@ -194,14 +357,17 @@ export default function Home() {
                           <li key={creator.id}>
                             <button
                               type="button"
-                              onClick={() => {
-                                setSelectedChannel(null);
-                                setSelectedCreatorId(creator.id);
-                                setSearch(creator.name);
-                              }}
+                              onClick={() => handleSelectCreator(creator)}
                               className="flex w-full items-center justify-between px-3 py-1.5 text-left text-sm text-stone-700 hover:bg-stone-50"
                             >
-                              <span>{creator.name}</span>
+                              <span className="flex items-center gap-2">
+                                <span
+                                  className={`inline-block h-2 w-2 rounded-full ${colorForId(
+                                    creator.id,
+                                  )}`}
+                                />
+                                <span>{creator.name}</span>
+                              </span>
                               <span className="text-[11px] uppercase tracking-wide text-stone-400">
                                 {creator.category.replace(/-/g, " ")}
                               </span>
@@ -222,26 +388,7 @@ export default function Home() {
                           <li key={result.channelId}>
                             <button
                               type="button"
-                              onClick={() => {
-                                const asCreator: FavouriteCreator = {
-                                  id: result.channelId,
-                                  name: result.title,
-                                  channelId: result.channelId,
-                                  category: "things-to-do",
-                                };
-                                setSelectedCreatorId(null);
-                                setSelectedChannel({
-                                  channelId: result.channelId,
-                                  name: result.title,
-                                });
-                                setSearch(result.title);
-                                setFavourites((prev) => {
-                                  if (prev.some((p) => p.id === asCreator.id)) {
-                                    return prev;
-                                  }
-                                  return [...prev, asCreator];
-                                });
-                              }}
+                              onClick={() => handleSelectChannelResult(result)}
                               className="flex w-full flex-col px-3 py-1.5 text-left text-sm text-stone-700 hover:bg-stone-50"
                             >
                               <span className="font-medium">{result.title}</span>

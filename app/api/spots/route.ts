@@ -130,7 +130,16 @@ async function fetchSpotsForCreator(
     for (const candidate of ranked) {
       if (spotsThisVideo >= 3) break;
 
-      const coords = await geocode(candidate.text);
+      // For some creators (like Taste Cadets), most spots are in London even
+      // when the city isn't written out. Bias geocoding slightly by appending
+      // London to the query when no city is present.
+      const biasedQuery =
+        creatorName.toLowerCase().includes("taste cadets") &&
+        !/london/i.test(candidate.text)
+          ? `${candidate.text}, London`
+          : candidate.text;
+
+      const coords = await geocode(biasedQuery);
       if (!coords) continue;
 
       spots.push({
