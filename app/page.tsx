@@ -122,6 +122,8 @@ export default function Home() {
   // On first visit, show all spots for favourite creators
   useEffect(() => {
     void loadAllSpots();
+  }, []);
+
   // Search YouTube for channels when the query changes
   useEffect(() => {
     if (!search.trim()) {
@@ -154,9 +156,6 @@ export default function Home() {
       controller.abort();
     };
   }, [search]);
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-stone-50">
